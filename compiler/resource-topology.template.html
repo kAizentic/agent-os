@@ -1,0 +1,372 @@
+<title>agent-os — Resource Topology</title>
+<style>
+  :root{
+    --ground:#0e1418; --panel:#151d23; --panel-2:#1b262d; --line:#26343c;
+    --ink:#dbe6ea; --ink-dim:#9fb0b8; --muted:#728690;
+    --signal:#37d0c4; --signal-dim:#1f6f6a;
+    --good:#57c98a; --warn:#e0a03a; --crit:#d9605a; --violet:#8f8cf0;
+    --mono: ui-monospace,"Cascadia Code","JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --r:8px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ground:#eef2f3; --panel:#ffffff; --panel-2:#f3f7f8; --line:#d3dee1;
+      --ink:#122027; --ink-dim:#3c4e56; --muted:#69808a;
+      --signal:#0f8f86; --signal-dim:#9bd6d1;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0e1418; --panel:#151d23; --panel-2:#1b262d; --line:#26343c;
+    --ink:#dbe6ea; --ink-dim:#9fb0b8; --muted:#728690;
+    --signal:#37d0c4; --signal-dim:#1f6f6a;
+  }
+  :root[data-theme="light"]{
+    --ground:#eef2f3; --panel:#ffffff; --panel-2:#f3f7f8; --line:#d3dee1;
+    --ink:#122027; --ink-dim:#3c4e56; --muted:#69808a;
+    --signal:#0f8f86; --signal-dim:#9bd6d1;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+    line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  h1,h2,h3{font-family:var(--mono);font-weight:600;text-wrap:balance;letter-spacing:-.01em}
+  a{color:var(--signal)}
+  .mono{font-family:var(--mono)}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  header.hero{border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  .grid-bg{position:absolute;inset:0;opacity:.5;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 80% at 70% 0%,#000 0%,transparent 70%);
+    mask-image:radial-gradient(120% 80% at 70% 0%,#000 0%,transparent 70%);pointer-events:none}
+  .hero .wrap{position:relative;padding:60px 22px 46px}
+  .hero h1{font-size:clamp(1.9rem,4.4vw,3.2rem);margin:.4rem 0 .5rem;line-height:1.05}
+  .hero h1 .tint{color:var(--signal)}
+  .lede{max-width:60ch;color:var(--ink-dim);font-size:1.06rem}
+  .statrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;min-width:118px}
+  .stat b{font-family:var(--mono);font-size:1.5rem;display:block;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .stat span{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  section{padding:52px 0;border-bottom:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .sec-head h2{font-size:1.35rem;margin:0}
+  .sec-num{font-family:var(--mono);color:var(--signal);font-size:.82rem}
+  .sec-sub{color:var(--ink-dim);max-width:72ch;margin:.1rem 0 30px;font-size:.98rem}
+  .tier{position:relative;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:14px 16px;margin-bottom:26px}
+  .tier::after{content:"";position:absolute;left:50%;bottom:-26px;width:1px;height:26px;background:linear-gradient(var(--signal-dim),transparent)}
+  .tier:last-child::after{display:none}
+  .tier-label{position:absolute;top:-9px;left:14px;background:var(--ground);padding:0 8px;
+    font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chip{font-family:var(--mono);font-size:.78rem;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;color:var(--ink-dim);white-space:nowrap}
+  .chip .k{color:var(--muted);font-size:.66rem}
+  .chip.sig{border-color:var(--signal-dim)}
+  .tier.core{background:linear-gradient(180deg,var(--panel),var(--panel-2));border-color:var(--signal-dim)}
+  .tier.core .tier-label{color:var(--signal)}
+  .matrix-tools{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:16px;font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+  .legend-dot{display:inline-flex;align-items:center;gap:6px;margin-right:2px}
+  .legend-dot i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .matrix-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+  table.matrix{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:.8rem}
+  table.matrix th,table.matrix td{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+  table.matrix thead th{position:sticky;top:0;background:var(--panel-2);z-index:2;text-align:center;font-weight:500;color:var(--ink-dim);vertical-align:bottom;padding:0}
+  table.matrix thead th.corner{text-align:left;padding:10px 12px;color:var(--muted);min-width:210px;z-index:3}
+  .colhead{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;padding:10px 4px;cursor:pointer;height:118px;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.03em}
+  .colhead:hover{color:var(--signal)}
+  th.res-col.active .colhead{color:var(--signal)}
+  th.res-col.active{background:rgba(55,208,196,.10)}
+  .cluster-row td{background:var(--panel-2);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:7px 12px;border-right:none}
+  td.skill-name{padding:7px 12px;color:var(--ink-dim);white-space:nowrap;position:sticky;left:0;background:var(--panel);z-index:1;border-right:1px solid var(--line)}
+  td.skill-name .vend{color:var(--muted);font-size:.62rem;margin-left:6px}
+  tr.srow:hover td.skill-name{color:var(--ink)}
+  tr.srow:hover{background:rgba(55,208,196,.055)}
+  td.cell{text-align:center;padding:0;height:30px;width:34px}
+  td.cell .d{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--signal);opacity:.9;transition:transform .12s}
+  td.cell.on{background:rgba(55,208,196,.06)}
+  td.cell.hot{background:rgba(55,208,196,.20)}
+  td.cell.hot .d{transform:scale(1.5)}
+  .res-count{font-size:.7rem;color:var(--muted);text-align:center;padding:4px 0;font-variant-numeric:tabular-nums}
+  .chain{display:grid;grid-template-columns:1fr;gap:0}
+  .slot{display:grid;grid-template-columns:74px 1fr;gap:16px;align-items:start;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .slot:last-child{border-bottom:none}
+  .slot .t{font-family:var(--mono);font-size:.86rem;color:var(--signal);text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+  .slot .body b{font-family:var(--mono);font-size:.94rem}
+  .slot .body p{margin:2px 0 0;color:var(--ink-dim);font-size:.86rem}
+  .tag{font-family:var(--mono);font-size:.66rem;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted);margin-left:8px;vertical-align:middle}
+  .tag.local{border-color:var(--good);color:var(--good)}
+  .tag.cowork{border-color:var(--violet);color:var(--violet)}
+  .tag.semi{border-color:var(--warn);color:var(--warn)}
+  .res-inline{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:4px}
+  .res-inline span{color:var(--signal)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 17px}
+  .card h3{font-size:.98rem;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .card h3 .dot{width:9px;height:9px;border-radius:2px}
+  .card .flow{font-family:var(--mono);font-size:.78rem;color:var(--ink-dim);line-height:1.7}
+  .card .flow em{color:var(--signal);font-style:normal}
+  .card .note{font-size:.82rem;color:var(--muted);margin-top:8px}
+  .twocol{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .panel h3{font-size:1rem;margin:0 0 10px}
+  ul.tight{margin:0;padding-left:18px}
+  ul.tight li{margin:5px 0;color:var(--ink-dim);font-size:.9rem}
+  ul.tight li b{color:var(--ink);font-family:var(--mono);font-weight:600}
+  .kbd{font-family:var(--mono);font-size:.78rem;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink-dim)}
+  footer{padding:30px 0 60px;color:var(--muted);font-size:.8rem;font-family:var(--mono)}
+  .toggle{position:fixed;top:14px;right:16px;z-index:20;font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);border-radius:20px;padding:6px 13px;cursor:pointer}
+  .toggle:hover{border-color:var(--signal);color:var(--signal)}
+  :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  @media (max-width:640px){.colhead{height:96px}.slot{grid-template-columns:60px 1fr;gap:10px}}
+</style>
+
+<button class="toggle" id="themeBtn" aria-label="Toggle theme">◐ theme</button>
+
+<header class="hero">
+  <div class="grid-bg"></div>
+  <div class="wrap">
+    <div class="eyebrow">Second Brain · agent-os · resource topology</div>
+    <h1>The vault doesn't store knowledge.<br><span class="tint">It compiles outward.</span></h1>
+    <p class="lede">A map of the operating layer, <b>compiled from each skill's <span class="mono">tools:</span> frontmatter</b>:
+      which skills draw on which external resources, how they compose into workflow loops, and the scheduling
+      clock that fires them unattended. Skills are authored once in the vault and compiled to
+      <span class="mono">~/.claude/skills</span>; the connectors, browser, and CLIs below are the resources they reach through.</p>
+    <div class="statrow" id="statrow"></div>
+  </div>
+</header>
+
+<section id="tiers">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The signal path</h2></div>
+    <p class="sec-sub">Read top-down as data flowing through the system: the outside world enters through a
+      connector bus, skills (the core) transform it, the vault is the storage substrate, and the compiler +
+      hooks close the loop back into the runtime. Every layer below is a resource the skills consume.</p>
+    <div class="tiers">
+      <div class="tier">
+        <span class="tier-label">Tier 0 · external world</span>
+        <div class="chips">
+          <span class="chip">Web <span class="k">/ Exa</span></span><span class="chip">Granola <span class="k">/ meetings</span></span>
+          <span class="chip">Slack <span class="k">/ #brain-inbox</span></span><span class="chip">Ahrefs <span class="k">/ SEO·GEO</span></span>
+          <span class="chip">GitHub</span><span class="chip">Notion</span><span class="chip">Google <span class="k">/ Cal·Drive</span></span>
+          <span class="chip">YouTube <span class="k">/ yt-dlp</span></span>
+        </div>
+      </div>
+      <div class="tier">
+        <span class="tier-label">Tier 1 · connector & tool bus</span>
+        <div class="chips">
+          <span class="chip sig">exa <span class="k">http · user-scope</span></span><span class="chip sig">obsidian <span class="k">mcp</span></span>
+          <span class="chip sig">graphify <span class="k">mcp</span></span><span class="chip sig">granola</span><span class="chip sig">slack</span>
+          <span class="chip sig">ahrefs</span><span class="chip sig">github</span><span class="chip sig">playwright <span class="k">/ chrome</span></span>
+          <span class="chip sig">nanobanana</span><span class="chip sig">netlify</span><span class="chip sig">magic</span>
+          <span class="chip">CLI <span class="k">whisper·defuddle·yt-dlp·node</span></span>
+        </div>
+      </div>
+      <div class="tier core">
+        <span class="tier-label">Tier 2 · skill core (grouped by workflow)</span>
+        <div class="chips" id="clusterChips"></div>
+      </div>
+      <div class="tier">
+        <span class="tier-label">Tier 3 · vault storage substrate</span>
+        <div class="chips">
+          <span class="chip">inbox <span class="k">capture landing</span></span><span class="chip">sources <span class="k">immutable</span></span>
+          <span class="chip">knowledge <span class="k">knowledge</span></span><span class="chip">library <span class="k">grab-and-go</span></span>
+          <span class="chip">output <span class="k">deliverables</span></span><span class="chip">private <span class="k">sensitive</span></span>
+          <span class="chip">archive</span><span class="chip sig">agent-os/Skills <span class="k">source of truth</span></span>
+        </div>
+      </div>
+      <div class="tier">
+        <span class="tier-label">Tier 4 · runtime loop-closers</span>
+        <div class="chips">
+          <span class="chip sig">compile-skills.mjs <span class="k">→ ~/.claude/skills</span></span>
+          <span class="chip sig">build-resource-map.mjs <span class="k">→ this page</span></span>
+          <span class="chip">SessionStart hook <span class="k">skill-dispatch</span></span>
+          <span class="chip">PostToolUse hook <span class="k">activity.jsonl → graph-brain</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="matrix">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Skill × resource usage matrix</h2></div>
+    <p class="sec-sub" id="matrixSub"></p>
+    <div class="matrix-tools">
+      <span class="legend-dot"><i style="background:var(--signal)"></i> uses resource</span>
+      <span>· click a column header to filter · </span><span id="filterNote"></span>
+    </div>
+    <div class="matrix-scroll"><table class="matrix" id="mtx"></table></div>
+  </div>
+</section>
+
+<section id="clock">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The scheduling clock</h2></div>
+    <p class="sec-sub">Resource usage isn't only interactive — most of it fires unattended. The nightly
+      <b>evening chain</b> runs feeders into the inbox, then the sweep distills them, then a chained tail lints
+      and reports. Each routine is bound to the <b>substrate</b> that actually holds its resources — as of
+      2026-07-09 nearly everything is a local Windows task <span class="tag local">local</span>; the only
+      structural Cowork holdout is the monthly insights distill.</p>
+    <div class="twocol">
+      <div class="panel"><h3>Evening chain <span class="tag local">local · nightly</span></h3><div class="chain" id="chain"></div></div>
+      <div class="panel"><h3>Morning &amp; monthly</h3><div class="chain" id="chain2"></div>
+        <p class="note" style="margin-top:14px;color:var(--muted);font-size:.82rem">
+          Substrate rule: schedule between <b class="mono">10:00–24:00</b> (PC-on window). A routine lives where
+          its resources do — Granola/Slack/Exa are headless-local now, so only the filesystem-less cloud distill
+          stays on Cowork, and only <em>graphify rebuild</em> stays semi-attended.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="loops">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Workflow loops</h2></div>
+    <p class="sec-sub">Skills aren't used alone — they compose into a handful of loops. These are the
+      <span class="mono">composes_with</span> edges collapsed into the outcomes they serve.</p>
+    <div class="cards" id="loops-cards"></div>
+  </div>
+</section>
+
+<section id="reading">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">05</span><h2>How to read the topology</h2></div>
+    <div class="twocol">
+      <div class="panel"><h3>Load-bearing resources</h3>
+        <ul class="tight">
+          <li><b>obsidian + exa</b> — the two most-shared lanes: the vault's own read/write, and the web unlock that moved the feeder chain local.</li>
+          <li><b>granola</b> — every meeting path routes through it; authenticated headless, so meeting-sync moved local.</li>
+          <li><b>playwright</b> — the entire brand/site build cluster's eyes; the one browser-bound lane.</li>
+          <li><b>graphify</b> — the knowledge-graph query engine the vault-ops + self-maintenance skills lean on.</li>
+        </ul>
+      </div>
+      <div class="panel"><h3>How this page is built</h3>
+        <ul class="tight">
+          <li>Membership + cells compile from each skill's <span class="kbd">tools:</span> frontmatter.</li>
+          <li>Vendored skills (byte-for-byte upstream) contribute via <span class="kbd">compiler/resource-sidecar.json</span>.</li>
+          <li>Regenerate: <span class="kbd">node "agent-os/compiler/build-resource-map.mjs"</span> → <span class="kbd">resource-map.json</span> + this HTML.</li>
+          <li>Add a connector to a skill → edit its <span class="kbd">tools:</span>, re-run, the map updates.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    compiled from agent-os/Skills/**/SKILL.md <span class="mono">tools:</span> + resource-sidecar.json ·
+    <span id="genstamp"></span> &nbsp;·&nbsp;
+    <span style="color:var(--ink-dim)">source of truth: agent-os/Skills/ → compile-skills.mjs → ~/.claude/skills</span>
+  </div>
+</footer>
+
+<script id="resdata" type="application/json">/*__RESOURCE_DATA__*/</script>
+<script>
+const DATA = JSON.parse(document.getElementById("resdata").textContent);
+const resources = DATA.lanes;
+const clusters = DATA.clusters;
+const laneCount = DATA.laneCount;
+
+/* stats */
+const S = DATA.totals;
+document.getElementById("statrow").innerHTML = [
+  [S.skills,"skills"],[S.resourceDrawing,"resource-drawing"],[S.pureCompute,"pure-compute"],
+  [S.lanes,"resource lanes"],["~9","scheduled routines"],["2","compiler stages"],
+].map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+document.getElementById("matrixSub").innerHTML =
+  `The literal resource-usage map, compiled from frontmatter. Only the <b>${S.resourceDrawing} skills that reach an `+
+  `external resource</b> appear — the other ${S.pureCompute} are pure-reasoning skills (grill, tdd, to-prd, review, `+
+  `frontend-design…) that consume no connector. Hover a row to isolate a skill's footprint; click a column to `+
+  `spotlight every skill that draws on that resource.`;
+document.getElementById("genstamp").textContent = "generated " + DATA.generated.slice(0,10);
+
+/* cluster chips */
+document.getElementById("clusterChips").innerHTML = clusters
+  .map(([c,m])=>`<span class="chip">${c} <span class="k">${m.length}</span></span>`).join("");
+
+/* matrix */
+const mtx = document.getElementById("mtx");
+let thead = "<thead><tr><th class='corner'>skill \\ resource</th>";
+resources.forEach(r=>{thead+=`<th class="res-col" data-res="${r[0]}"><div class="colhead" data-res="${r[0]}" tabindex="0">${r[1]}</div></th>`;});
+thead += "</tr></thead>";
+let tbody = "<tbody>";
+clusters.forEach(([cname, skills])=>{
+  tbody += `<tr class="cluster-row"><td colspan="${resources.length+1}">${cname}</td></tr>`;
+  skills.forEach(([sk, uses])=>{
+    tbody += `<tr class="srow" data-uses="${uses.join(' ')}"><td class="skill-name">${sk}</td>`;
+    resources.forEach(r=>{
+      const on = uses.includes(r[0]);
+      tbody += `<td class="cell ${on?'on':''}" data-res="${r[0]}">${on?'<span class="d"></span>':''}</td>`;
+    });
+    tbody += "</tr>";
+  });
+});
+let tfoot = "<tr class='cluster-row'><td>usage count →</td>";
+resources.forEach(r=>{tfoot+=`<td class="res-count" data-res="${r[0]}">${laneCount[r[0]]}</td>`;});
+tfoot += "</tr>";
+tbody += tfoot + "</tbody>";
+mtx.innerHTML = thead + tbody;
+
+/* interactions */
+let activeRes = null;
+const note = document.getElementById("filterNote");
+function setActive(res){
+  activeRes = (activeRes===res)?null:res;
+  document.querySelectorAll("th.res-col").forEach(th=>th.classList.toggle("active", th.dataset.res===activeRes));
+  document.querySelectorAll("td.cell").forEach(td=>{
+    const match = activeRes && td.dataset.res===activeRes && td.classList.contains("on");
+    td.classList.toggle("hot", !!match);
+  });
+  document.querySelectorAll("tr.srow").forEach(tr=>{
+    const uses = tr.dataset.uses.split(" ");
+    tr.style.opacity = (!activeRes || uses.includes(activeRes)) ? "1" : ".28";
+  });
+  if(activeRes){
+    const label = resources.find(r=>r[0]===activeRes)[1];
+    note.innerHTML = `spotlighting <b style="color:var(--signal)">${label}</b> · ${laneCount[activeRes]} skills`;
+  } else note.textContent = "";
+}
+document.querySelectorAll(".colhead").forEach(c=>{
+  c.addEventListener("click", ()=>setActive(c.dataset.res));
+  c.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();setActive(c.dataset.res);} });
+});
+
+/* chain (routines — hand-maintained, not from frontmatter) */
+const evening = [
+  ["20:00","meeting-sync","Granola → sources + knowledge (sensitive → private)","granola"],
+  ["20:15","blogwatcher","feeds → inbox clips","exa · obsidian"],
+  ["21:15","intel-scan","priority web scan → clips + briefing","exa · ahrefs"],
+  ["21:45","intent-scout","senses intent → quarantine (walled from inbox)","exa · obsidian"],
+  ["22:30","distill","sweep: distill clips, dedupe, cross-link","granola · slack · obsidian"],
+  ["→ tail","wiki-lint · vault-health · reports→PDF","chained by completion, not clock","graphify"],
+];
+const other = [
+  ["10:00","routine-health","watchdog: audits every task + the chain","—","local"],
+  ["10:20","project-digest","Desktop/Projects → knowledge/notes/projects","local FS","local"],
+  ["day 28","cc-insights snapshot","/insights → inbox/cc-insights","local","local"],
+  ["1st","cc-insights distill","folds the insights delta","Cowork","cowork"],
+  ["1st","graphify rebuild","monthly graph drift-reset","semi-attended","semi"],
+];
+const chainEl = document.getElementById("chain");
+evening.forEach(([t,name,desc,res])=>{chainEl.innerHTML += `<div class="slot"><div class="t">${t}</div><div class="body"><b>${name}</b><p>${desc}</p><div class="res-inline"><span>${res}</span></div></div></div>`;});
+const chain2El = document.getElementById("chain2");
+other.forEach(([t,name,desc,res,sub])=>{chain2El.innerHTML += `<div class="slot"><div class="t">${t}</div><div class="body"><b>${name}</b><span class="tag ${sub}">${sub}</span><p>${desc}</p><div class="res-inline"><span>${res}</span></div></div></div>`;});
+
+/* loops */
+const loops = [
+  ["Second Brain loop","var(--signal)","capture → <em>distill</em> → graphify → apply-insights","Push-in feeders (blogwatch/intel-scan) fill the inbox; the sweep distills and cross-links; the graph re-indexes."],
+  ["Dev pipeline","var(--good)","<em>softdev-workflows</em>: grill → to-prd → to-issues → tdd → review → secure-push","align→PRD→slice→AFK implement→review→ship; the orchestrator composing eight coding skills."],
+  ["Brand / Site build","var(--violet)","brand-teardown → <em>site-synth</em> → site-harvest → site-cms","Teardown extracts the kit; site-synth builds; motion-forensics + interactive-hero-banner add the choreography."],
+  ["Skill self-maintenance","var(--warn)","skill-builder → <em>skill-pipeline-sync</em> → skill-portfolio-review → wiki-lint","The system edits itself: author a spec, compile to runtime, audit portfolio health, lint the vault."],
+];
+const lc = document.getElementById("loops-cards");
+loops.forEach(([name,color,flow,note])=>{lc.innerHTML += `<div class="card"><h3><span class="dot" style="background:${color}"></span>${name}</h3><div class="flow">${flow}</div><div class="note">${note}</div></div>`;});
+
+/* theme */
+document.getElementById("themeBtn").addEventListener("click", ()=>{
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur==="dark" ? "light" : cur==="light" ? "dark"
+    : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+  document.documentElement.setAttribute("data-theme", next);
+});
+</script>
